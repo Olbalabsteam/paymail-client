@@ -21,11 +21,11 @@ export default [
         format: 'cjs',
         sourcemap: true
       },
-      {
+    /* NO ESM  {
         file: pkg.module,
         format: 'es',
         sourcemap: true
-      }
+      }*/
     ],
     plugins: [
       replace(getReplacements()),
