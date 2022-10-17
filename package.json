@@ -27,12 +27,12 @@
   },
   "dependencies": {
     "@babel/runtime": "7.5.5",
-    "@moneybutton/brfc": "^0.38.9",
     "abort-controller": "3.0.0",
+    "brfc": "github:mkpuig/brfc",
     "bsv": "2.0.7",
     "http-status-codes": "^2.1.4",
-    "node-fetch": "^2.6.7",
     "moment": "^2.29.0",
+    "node-fetch": "^2.6.7",
     "pure-cache": "^1.0.6"
   },
   "devDependencies": {
