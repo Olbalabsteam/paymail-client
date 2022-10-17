@@ -10,7 +10,7 @@ See the [docs](docs/paymail-overview.md)
 
 ``` javascript
 import { PaymailClient, Verifi } from '@moneybutton/paymail-client'
-import fetch from 'isomorphic-fetch'
+import fetch from 'node-fetch'
 import dns from 'dns'
 import PrivKey from 'bsv/lib/priv-key'
 import PubKey from 'bsv/lib/pub-key'
