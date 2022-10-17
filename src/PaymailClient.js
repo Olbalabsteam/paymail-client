@@ -1,36 +1,38 @@
-import { EndpointResolver } from './EndpointResolver'
-import { VerifiableMessage } from './VerifiableMessage'
-import { RequestBodyFactory } from './RequestBodyFactory'
-import { Clock } from './Clock'
-import { PaymailNotFound } from './errors/PaymailNotFound'
-import { CapabilityCodes } from './constants'
-import fetch from 'isomorphic-fetch'
-import { BrowserDns } from './BrowserDns'
-import { Http } from './http'
-import HttpStatus from 'http-status-codes'
-import { ProtocolNotSupported } from './errors/ProtocolNotSupported'
-import { AssetNotAccepted } from './errors/AssetNotAccepted'
-import { PaymailServerError } from './errors/PaymailServerError'
+import { EndpointResolver } from "./EndpointResolver";
+import { VerifiableMessage } from "./VerifiableMessage";
+import { RequestBodyFactory } from "./RequestBodyFactory";
+import { Clock } from "./Clock";
+import { PaymailNotFound } from "./errors/PaymailNotFound";
+import { CapabilityCodes } from "./constants";
+import fetch from "node-fetch";
+import { BrowserDns } from "./BrowserDns";
+import { Http } from "./http";
+import HttpStatus from "http-status-codes";
+import { ProtocolNotSupported } from "./errors/ProtocolNotSupported";
+import { AssetNotAccepted } from "./errors/AssetNotAccepted";
+import { PaymailServerError } from "./errors/PaymailServerError";
 
 class PaymailClient {
-  constructor (dns = null, fetch2 = null, clock = null, bsv = null) {
-    let defaultCacheTTL = 3600 * 1000
+  constructor(dns = null, fetch2 = null, clock = null, bsv = null) {
+    let defaultCacheTTL = 3600 * 1000;
 
     if (fetch2 === null) {
-      fetch2 = fetch
+      fetch2 = fetch;
     }
     if (dns === null) {
-      dns = new BrowserDns(fetch2)
-      defaultCacheTTL = 0
+      dns = new BrowserDns(fetch2);
+      defaultCacheTTL = 0;
     }
     if (bsv === null) {
-      bsv = require('bsv')
+      bsv = require("bsv");
     }
-    this.bsv = bsv
-    this.resolver = new EndpointResolver(dns, fetch2, defaultCacheTTL)
-    this.http = new Http(fetch2)
-    this.requestBodyFactory = new RequestBodyFactory(clock !== null ? clock : new Clock())
-    this.VerifiableMessage = VerifiableMessage
+    this.bsv = bsv;
+    this.resolver = new EndpointResolver(dns, fetch2, defaultCacheTTL);
+    this.http = new Http(fetch2);
+    this.requestBodyFactory = new RequestBodyFactory(
+      clock !== null ? clock : new Clock()
+    );
+    this.VerifiableMessage = VerifiableMessage;
   }
 
   /**
@@ -38,11 +40,11 @@ class PaymailClient {
    *
    * @param {String} paymail - a paymail address
    */
-  async getPublicKey (paymail) {
-    const identityUrl = await this.resolver.getIdentityUrlFor(paymail)
-    const response = await this.http.get(identityUrl)
-    const { pubkey } = await response.json()
-    return pubkey
+  async getPublicKey(paymail) {
+    const identityUrl = await this.resolver.getIdentityUrlFor(paymail);
+    const response = await this.http.get(identityUrl);
+    const { pubkey } = await response.json();
+    return pubkey;
   }
 
   /**
@@ -59,18 +61,21 @@ class PaymailClient {
    * @param {String} senderInfo.signature - Optional. Valid signature according to paymail specification.
    * @param {String} privateKey - Optional. private key to sign the request.
    */
-  async getOutputFor (aPaymail, senderInfo, privateKey = null) {
-    const addressUrl = await this.resolver.getAddressUrlFor(aPaymail)
-    const body = this.requestBodyFactory.buildBodyToRequestAddress(senderInfo, privateKey)
-    const response = await this.http.postJson(addressUrl, body)
+  async getOutputFor(aPaymail, senderInfo, privateKey = null) {
+    const addressUrl = await this.resolver.getAddressUrlFor(aPaymail);
+    const body = this.requestBodyFactory.buildBodyToRequestAddress(
+      senderInfo,
+      privateKey
+    );
+    const response = await this.http.postJson(addressUrl, body);
 
     if (response.status === HttpStatus.NOT_FOUND) {
-      throw new PaymailNotFound(`Paymail not found: ${aPaymail}`, aPaymail)
+      throw new PaymailNotFound(`Paymail not found: ${aPaymail}`, aPaymail);
     } else if (!response.ok) {
-      throw new Error(`Server failed with: ${await response.text()}`)
+      throw new Error(`Server failed with: ${await response.text()}`);
     }
-    const { output } = await response.json()
-    return output
+    const { output } = await response.json();
+    return output;
   }
 
   /**
@@ -80,12 +85,12 @@ class PaymailClient {
    * @param {String} pubkey - Public key to check.
    * @param {String} paymail - a paymail address
    */
-  async verifyPubkeyOwner (pubkey, paymail) {
-    const url = await this.resolver.getVerifyUrlFor(paymail, pubkey)
-    const response = await this.http.get(url)
-    const body = await response.json()
-    const { match } = body
-    return match
+  async verifyPubkeyOwner(pubkey, paymail) {
+    const url = await this.resolver.getVerifyUrlFor(paymail, pubkey);
+    const response = await this.http.get(url);
+    const body = await response.json();
+    const { match } = body;
+    return match;
   }
 
   /**
@@ -102,36 +107,47 @@ class PaymailClient {
    * @param {String} paymail - Signature owner paymail
    * @param {String} pubkey - Optional. Public key that validates the signature.
    */
-  async isValidSignature (message, signature, paymail = null, pubkey = null) {
+  async isValidSignature(message, signature, paymail = null, pubkey = null) {
     if (paymail == null && pubkey === null) {
-      throw new Error('Must specify either paymail or pubkey')
+      throw new Error("Must specify either paymail or pubkey");
     }
-    let senderPubKey
+    let senderPubKey;
     if (paymail) {
-      if (pubkey && await this.resolver.domainHasCapability(paymail.split('@')[1], CapabilityCodes.verifyPublicKeyOwner)) {
+      if (
+        pubkey &&
+        (await this.resolver.domainHasCapability(
+          paymail.split("@")[1],
+          CapabilityCodes.verifyPublicKeyOwner
+        ))
+      ) {
         if (await this.verifyPubkeyOwner(pubkey, paymail)) {
-          senderPubKey = this.bsv.PubKey.fromString(pubkey)
+          senderPubKey = this.bsv.PubKey.fromString(pubkey);
         } else {
-          return false
+          return false;
         }
       } else {
-        const hasPki = await this.resolver.domainHasCapability(paymail.split('@')[1], CapabilityCodes.pki)
+        const hasPki = await this.resolver.domainHasCapability(
+          paymail.split("@")[1],
+          CapabilityCodes.pki
+        );
         if (hasPki) {
-          const identityKey = await this.getPublicKey(paymail)
-          senderPubKey = this.bsv.PubKey.fromString(identityKey)
+          const identityKey = await this.getPublicKey(paymail);
+          senderPubKey = this.bsv.PubKey.fromString(identityKey);
         } else {
-          return false
+          return false;
         }
       }
     }
 
-    const senderKeyAddress = this.bsv.Address.fromPubKey(senderPubKey || pubkey)
+    const senderKeyAddress = this.bsv.Address.fromPubKey(
+      senderPubKey || pubkey
+    );
     try {
-      const verified = message.verify(senderKeyAddress.toString(), signature)
-      return verified
+      const verified = message.verify(senderKeyAddress.toString(), signature);
+      return verified;
     } catch (err) {
       // console.log(err)
-      return false
+      return false;
     }
   }
 
@@ -141,130 +157,165 @@ class PaymailClient {
    * @param {String} paymail - a paymail address
    * @param {String} s - the preferred size of the image
    */
-  async getPublicProfile (paymail) {
-    let publicProfileUrl = await this.resolver.getPublicProfileUrlFor(paymail)
-    const response = await this.http.get(publicProfileUrl)
+  async getPublicProfile(paymail) {
+    let publicProfileUrl = await this.resolver.getPublicProfileUrlFor(paymail);
+    const response = await this.http.get(publicProfileUrl);
     if (!response.ok) {
-      const body = await response.json()
-      throw new Error(`Server failed with: ${JSON.stringify(body)}`)
+      const body = await response.json();
+      throw new Error(`Server failed with: ${JSON.stringify(body)}`);
     }
-    const { avatar, name } = await response.json()
-    return { avatar, name }
+    const { avatar, name } = await response.json();
+    return { avatar, name };
   }
 
-  async sendRawTx (targetPaymail, hexTransaction, reference, metadata = {}) {
+  async sendRawTx(targetPaymail, hexTransaction, reference, metadata = {}) {
     if (!hexTransaction) {
-      throw new Error('transaction hex cannot be empty')
+      throw new Error("transaction hex cannot be empty");
     }
-    let receiveTxUrl = await this.resolver.getSendTxUrlFor(targetPaymail)
+    let receiveTxUrl = await this.resolver.getSendTxUrlFor(targetPaymail);
     const response = await this.http.postJson(
       receiveTxUrl,
-      this.requestBodyFactory.buildBodySendTx(hexTransaction, reference, metadata)
-    )
+      this.requestBodyFactory.buildBodySendTx(
+        hexTransaction,
+        reference,
+        metadata
+      )
+    );
     if (!response.ok) {
-      const body = await response.text()
-      throw new Error(`Server failed with: ${body}`)
+      const body = await response.text();
+      throw new Error(`Server failed with: ${body}`);
     }
-    return response.json()
+    return response.json();
   }
 
-  async getP2pPaymentDestination (targetPaymail, satoshis) {
+  async getP2pPaymentDestination(targetPaymail, satoshis) {
     if (!satoshis) {
-      throw new Error('Amount in satohis needs to be specified')
+      throw new Error("Amount in satohis needs to be specified");
     }
-    let paymentDestinationUrl = await this.resolver.getP2pPaymentDestinationUrlFor(targetPaymail)
+    let paymentDestinationUrl =
+      await this.resolver.getP2pPaymentDestinationUrlFor(targetPaymail);
     const response = await this.http.postJson(
       paymentDestinationUrl,
       this.requestBodyFactory.buildBodyP2pPaymentDestination(satoshis)
-    )
+    );
     if (response.status === HttpStatus.NOT_FOUND) {
-      throw new PaymailNotFound(`Paymail ${targetPaymail} not found`, targetPaymail)
+      throw new PaymailNotFound(
+        `Paymail ${targetPaymail} not found`,
+        targetPaymail
+      );
     }
     if (!response.ok) {
-      throw new PaymailServerError(`Paymail server for ${targetPaymail} returned an invalid response`)
+      throw new PaymailServerError(
+        `Paymail server for ${targetPaymail} returned an invalid response`
+      );
     }
 
-    const body = await response.json()
+    const body = await response.json();
     if (!body.outputs) {
-      throw new PaymailServerError('Server answered with a wrong format. Missing outputs')
+      throw new PaymailServerError(
+        "Server answered with a wrong format. Missing outputs"
+      );
     }
 
-    return body
+    return body;
   }
 
-  async getP2pPaymentDestinationWithTokensSupport (targetPaymail, amount, asset, protocol) {
-    const UNAVAILABLE_FOR_LEGAL_REASONS = 451
+  async getP2pPaymentDestinationWithTokensSupport(
+    targetPaymail,
+    amount,
+    asset,
+    protocol
+  ) {
+    const UNAVAILABLE_FOR_LEGAL_REASONS = 451;
     if (!amount) {
-      throw new Error('Amount needs to be specified')
+      throw new Error("Amount needs to be specified");
     }
-    let paymentDestinationUrl = await this.resolver.getP2pPaymentDestinationWithTokensSupportUrlFor(targetPaymail)
-    const response = await this.http.postJson(
-      paymentDestinationUrl,
-      {
-        amount,
-        asset,
-        protocol
-      }
-    )
+    let paymentDestinationUrl =
+      await this.resolver.getP2pPaymentDestinationWithTokensSupportUrlFor(
+        targetPaymail
+      );
+    const response = await this.http.postJson(paymentDestinationUrl, {
+      amount,
+      asset,
+      protocol,
+    });
     if (response.status === HttpStatus.NOT_ACCEPTABLE) {
-      throw new ProtocolNotSupported(`Protocol ${protocol} is not supported by paymail ${targetPaymail}`, protocol)
+      throw new ProtocolNotSupported(
+        `Protocol ${protocol} is not supported by paymail ${targetPaymail}`,
+        protocol
+      );
     }
     if (response.status === HttpStatus.NOT_FOUND) {
-      throw new PaymailNotFound(`Paymail ${targetPaymail} not found`, targetPaymail)
+      throw new PaymailNotFound(
+        `Paymail ${targetPaymail} not found`,
+        targetPaymail
+      );
     }
     if (response.status === UNAVAILABLE_FOR_LEGAL_REASONS) {
-      throw new AssetNotAccepted(`Paymail ${targetPaymail} cannot accept asset ${asset}`)
+      throw new AssetNotAccepted(
+        `Paymail ${targetPaymail} cannot accept asset ${asset}`
+      );
     }
     if (!response.ok) {
-      throw new PaymailServerError(`Paymail server for ${targetPaymail} returned an invalid response`)
+      throw new PaymailServerError(
+        `Paymail server for ${targetPaymail} returned an invalid response`
+      );
     }
 
-    const body = await response.json()
+    const body = await response.json();
     if (!body.outputs) {
-      throw new PaymailServerError('Server answered with a wrong format. Missing outputs')
+      throw new PaymailServerError(
+        "Server answered with a wrong format. Missing outputs"
+      );
     }
 
-    return body
+    return body;
   }
 
-  async sendSfpBuildAction (targetAssetPaymail, params) {
-    const buildActionUrl = await this.resolver.getSfpBuildActionUrlFor(targetAssetPaymail)
-    const response = await this.http.postJson(buildActionUrl, params)
+  async sendSfpBuildAction(targetAssetPaymail, params) {
+    const buildActionUrl = await this.resolver.getSfpBuildActionUrlFor(
+      targetAssetPaymail
+    );
+    const response = await this.http.postJson(buildActionUrl, params);
 
     if (!response.ok) {
-      const body = await response.json()
-      throw new PaymailServerError(body.message)
+      const body = await response.json();
+      throw new PaymailServerError(body.message);
     }
 
-    return response.json()
+    return response.json();
   }
 
-  async sendSfpAuthoriseAction (targetAssetPaymail, params) {
-    let authoriseActionUrl = await this.resolver.getSfpAuthoriseActionUrlFor(targetAssetPaymail)
-    const response = await this.http.postJson(authoriseActionUrl, params)
+  async sendSfpAuthoriseAction(targetAssetPaymail, params) {
+    let authoriseActionUrl = await this.resolver.getSfpAuthoriseActionUrlFor(
+      targetAssetPaymail
+    );
+    const response = await this.http.postJson(authoriseActionUrl, params);
 
     if (!response.ok) {
-      const body = await response.json()
-      throw new Error(body.message)
+      const body = await response.json();
+      throw new Error(body.message);
     }
 
-    return response.json()
+    return response.json();
   }
 
-  async getAssetInformation (assetTargetPaymail) {
-    let assetInformationUrl = await this.resolver.getAssetInformationUrlFor(assetTargetPaymail)
-    const response = await this.http.get(assetInformationUrl)
+  async getAssetInformation(assetTargetPaymail) {
+    let assetInformationUrl = await this.resolver.getAssetInformationUrlFor(
+      assetTargetPaymail
+    );
+    const response = await this.http.get(assetInformationUrl);
 
     if (response.status === HttpStatus.NOT_FOUND) {
-      throw new Error(`Asset ${assetTargetPaymail} was not found`)
+      throw new Error(`Asset ${assetTargetPaymail} was not found`);
     }
     if (!response.ok) {
-      const body = await response.text()
-      throw new Error(`Server failed with: ${body}`)
+      const body = await response.text();
+      throw new Error(`Server failed with: ${body}`);
     }
 
-    return response.json()
+    return response.json();
   }
 }
 
-export { PaymailClient }
+export { PaymailClient };
