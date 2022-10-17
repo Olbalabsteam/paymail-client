@@ -3,8 +3,6 @@
   "version": "0.39.0",
   "description": "Money Button isomorphic Paymail utilities.",
   "main": "dist/paymail-client.cjs.js",
-  "module": "dist/paymail-client.esm.js",
-  "unpkg": "dist/paymail-client.iife.js",
   "library": "PaymailClient",
   "files": [
     "dist/**"
