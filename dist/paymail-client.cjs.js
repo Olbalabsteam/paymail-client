@@ -8,7 +8,6 @@ var brfc = require('brfc');
 var AbortController = _interopDefault(require('abort-controller'));
 var PureCache = _interopDefault(require('pure-cache'));
 var moment = _interopDefault(require('moment'));
-var fetch = _interopDefault(require('node-fetch'));
 var HttpStatus = _interopDefault(require('http-status-codes'));
 
 const CapabilityCodes = {

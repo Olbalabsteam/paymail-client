@@ -2,7 +2,6 @@ import { brfc } from 'brfc';
 import AbortController from 'abort-controller';
 import PureCache from 'pure-cache';
 import moment from 'moment';
-import fetch from 'node-fetch';
 import HttpStatus from 'http-status-codes';
 
 const CapabilityCodes = {

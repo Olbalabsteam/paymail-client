@@ -4,7 +4,6 @@ import { RequestBodyFactory } from "./RequestBodyFactory";
 import { Clock } from "./Clock";
 import { PaymailNotFound } from "./errors/PaymailNotFound";
 import { CapabilityCodes } from "./constants";
-import fetch from "node-fetch";
 import { BrowserDns } from "./BrowserDns";
 import { Http } from "./http";
 import HttpStatus from "http-status-codes";
